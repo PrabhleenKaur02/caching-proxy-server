@@ -7,22 +7,23 @@ const app = express();
 
 const PORT = 3000
 const HOST = "localhost"
-const { API_KEY_VALUE } = process.env;
-if (!API_KEY_VALUE) {
-    console.error("Missing OPENWEATHER_API_KEY in .env file");
+const { API_BASE_URL, API_KEY_VALUE } = process.env;
+if (!API_KEY_VALUE || !API_BASE_URL) {
+    console.error("Missing base url or key value");
     process.exit(1);
   }
-const { API_BASE_URL} = process.env;
-const API_SERVICE_URL = `${API_BASE_URL}?lat=19.0760&lon=72.8777&appid=${API_KEY_VALUE}`
 
 app.use(morgan("dev"));
 
 app.use('/weather', createProxyMiddleware({
-    target: API_SERVICE_URL,
+    target: API_BASE_URL,
     changeOrigin: true,
-    pathRewrite: {
-        [`^/weather`]: '',
-    },
+    ws: true,
+    onProxyReq: (proxyReq, req) => {
+        const url = new URL(proxyReq.path, API_BASE_URL);
+        url.searchParams.append("appId", API_KEY_VALUE);
+        proxyReq.path = url.pathname + url.search;
+    }
 }));
 
 app.listen(PORT, HOST, () => {
